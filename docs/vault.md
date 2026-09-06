@@ -102,12 +102,17 @@ Read-only accessors.
 
 ## Events
 
-| Topic | Payload | Emitted when |
-|---|---|---|
-| `("deposit", stream_id)` | `(from, token, amount)` | `deposit` succeeds |
-| `("release", stream_id)` | `(to, token, amount)` | `release` succeeds |
-| `("refund", stream_id)` | `(to, token, amount)` | `refund` succeeds |
-| `("set_admin",)` | `new_contract` | `set_stream_contract` succeeds |
+Each event is a typed `#[contractevent]` struct (see `contracts/vault/src/events.rs`),
+so it appears in the contract's interface spec rather than as an untyped
+tuple. Topics are the struct name in snake_case followed by any `#[topic]`
+fields; data is the remaining fields.
+
+| Event struct | Topic | Data | Emitted when |
+|---|---|---|---|
+| `Deposit` | `("deposit", stream_id)` | `(from, token, amount)` | `deposit` succeeds |
+| `Release` | `("release", stream_id)` | `(to, token, amount)` | `release` succeeds |
+| `Refund` | `("refund", stream_id)` | `(to, token, amount)` | `refund` succeeds |
+| `SetStreamContract` | `("set_stream_contract",)` | `new_contract` | `set_stream_contract` succeeds |
 
 ## Storage layout
 
