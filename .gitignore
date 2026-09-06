@@ -1,6 +1,7 @@
 /target
 **/target
 .soroban
+test_snapshots/
 *.wasm
 .DS_Store
 *.swp
