@@ -20,6 +20,7 @@
 #![no_std]
 
 mod error;
+mod events;
 mod storage;
 mod types;
 mod test;
@@ -98,8 +99,7 @@ impl RegistryContract {
             .ok_or(RegistryError::MathOverflow)?;
         storage::set_stats(&env, &stats);
 
-        env.events()
-            .publish((soroban_sdk::symbol_short!("register"), stream_id), amount);
+        events::Register { stream_id, amount }.publish(&env);
         Ok(())
     }
 
@@ -144,8 +144,7 @@ impl RegistryContract {
         storage::set_record(&env, &record);
         storage::set_stats(&env, &stats);
 
-        env.events()
-            .publish((soroban_sdk::symbol_short!("update"), stream_id), withdrawn);
+        events::Update { stream_id, withdrawn }.publish(&env);
         Ok(())
     }
 
