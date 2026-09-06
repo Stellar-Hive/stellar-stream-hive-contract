@@ -1,0 +1,8 @@
+/target
+**/target
+.soroban
+*.wasm
+.DS_Store
+*.swp
+.vscode/
+.idea/
