@@ -14,12 +14,12 @@
 #![no_std]
 
 mod error;
+mod events;
 mod storage;
 mod test;
 
 use error::VaultError;
 use soroban_sdk::{contract, contractimpl, token, Address, Env};
-use storage::DataKey;
 
 #[contract]
 pub struct VaultContract;
@@ -77,8 +77,13 @@ impl VaultContract {
             .ok_or(VaultError::MathOverflow)?;
         storage::set_total_locked(&env, &token, new_total);
 
-        env.events()
-            .publish((soroban_sdk::symbol_short!("deposit"), stream_id), (from, token, amount));
+        events::Deposit {
+            stream_id,
+            from,
+            token,
+            amount,
+        }
+        .publish(&env);
         Ok(())
     }
 
@@ -137,8 +142,7 @@ impl VaultContract {
             return Err(VaultError::Unauthorized);
         }
         storage::set_stream_contract(&env, &new_contract);
-        env.events()
-            .publish((soroban_sdk::symbol_short!("set_admin"),), new_contract);
+        events::SetStreamContract { new_contract }.publish(&env);
         Ok(())
     }
 
@@ -208,12 +212,22 @@ impl VaultContract {
 
         match kind {
             PayoutKind::Release => {
-                env.events()
-                    .publish((soroban_sdk::symbol_short!("release"), stream_id), (to, token, amount));
+                events::Release {
+                    stream_id,
+                    to,
+                    token,
+                    amount,
+                }
+                .publish(env);
             }
             PayoutKind::Refund => {
-                env.events()
-                    .publish((soroban_sdk::symbol_short!("refund"), stream_id), (to, token, amount));
+                events::Refund {
+                    stream_id,
+                    to,
+                    token,
+                    amount,
+                }
+                .publish(env);
             }
         }
         Ok(())

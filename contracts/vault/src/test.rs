@@ -11,6 +11,7 @@ struct TestCtx {
     vault: VaultContractClient<'static>,
     admin: Address,
     stream_contract: Address,
+    #[allow(dead_code)]
     token_admin: Address,
     token_address: Address,
     token_sac: token::StellarAssetClient<'static>,
