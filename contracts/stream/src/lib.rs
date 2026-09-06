@@ -13,6 +13,7 @@
 #![no_std]
 
 mod error;
+mod events;
 mod math;
 mod storage;
 mod test;
@@ -20,7 +21,7 @@ mod types;
 mod vault_client;
 
 use error::StreamError;
-use soroban_sdk::{contract, contractimpl, symbol_short, Address, Env, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Env, Vec};
 use types::{Stream, StreamStatus};
 
 #[contract]
@@ -90,10 +91,16 @@ impl StreamContract {
 
         vault_client::deposit(&env, &vault, &sender, &token, total_amount, id);
 
-        env.events().publish(
-            (symbol_short!("create"), id),
-            (sender, recipient, token, total_amount, start_ledger, end_ledger),
-        );
+        events::Create {
+            stream_id: id,
+            sender,
+            recipient,
+            token,
+            total_amount,
+            start_ledger,
+            end_ledger,
+        }
+        .publish(&env);
 
         Ok(id)
     }
@@ -149,8 +156,12 @@ impl StreamContract {
             stream_id,
         );
 
-        env.events()
-            .publish((symbol_short!("withdraw"), stream_id), (recipient, amount));
+        events::Withdraw {
+            stream_id,
+            recipient,
+            amount,
+        }
+        .publish(&env);
         Ok(())
     }
 
@@ -213,8 +224,13 @@ impl StreamContract {
             );
         }
 
-        env.events()
-            .publish((symbol_short!("cancel"), stream_id), (sender, streamed_now, remainder));
+        events::Cancel {
+            stream_id,
+            sender,
+            streamed_now,
+            remainder,
+        }
+        .publish(&env);
         Ok(())
     }
 
