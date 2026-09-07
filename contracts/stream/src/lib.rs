@@ -267,6 +267,16 @@ impl StreamContract {
         let now = env.ledger().sequence();
         Ok(math::compute_status(&stream, now))
     }
+
+    /// Read-only accessor for the admin address.
+    pub fn get_admin(env: Env) -> Result<Address, StreamError> {
+        storage::get_admin(&env).ok_or(StreamError::NotInitialized)
+    }
+
+    /// Read-only accessor for the configured vault address.
+    pub fn get_vault(env: Env) -> Result<Address, StreamError> {
+        storage::get_vault(&env).ok_or(StreamError::NotInitialized)
+    }
 }
 
 impl StreamContract {

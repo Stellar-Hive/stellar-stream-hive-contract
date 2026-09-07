@@ -176,6 +176,11 @@ impl RegistryContract {
     pub fn get_stream_record(env: Env, stream_id: u64) -> Result<StreamRecord, RegistryError> {
         storage::get_record(&env, stream_id).ok_or(RegistryError::StreamNotFound)
     }
+
+    /// Read-only accessor for the admin address.
+    pub fn get_admin(env: Env) -> Result<Address, RegistryError> {
+        storage::get_admin(&env).ok_or(RegistryError::NotInitialized)
+    }
 }
 
 pub use error::RegistryError as Error;
