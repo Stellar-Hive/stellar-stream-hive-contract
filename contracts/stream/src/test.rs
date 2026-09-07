@@ -3,12 +3,64 @@
 use crate::{StreamContract, StreamContractClient};
 use crate::types::StreamStatus;
 use soroban_sdk::{testutils::{Address as _, Ledger as _}, token, Address, Env};
-use stellar_stream_hive_vault::{VaultContract, VaultContractClient};
+
+/// A minimal stand-in for the real vault contract, used only so the stream
+/// contract's tests can exercise the full create -> deposit -> withdraw ->
+/// release -> cancel -> refund call flow through real cross-contract
+/// invocation, without pulling the vault crate in as a Rust dependency.
+///
+/// The vault's own security boundary (caller must be the exact configured
+/// stream contract) and balance accounting are exhaustively tested in
+/// `stellar-stream-hive-vault`'s own test suite (see contracts/vault/src/test.rs)
+/// against the real vault contract -- this mock only needs to move tokens
+/// realistically enough for the stream contract's own math and control
+/// flow to be tested end-to-end.
+mod mock_vault {
+    use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env};
+
+    #[contracttype]
+    enum Key {
+        Balance(u64),
+    }
+
+    #[contract]
+    pub struct MockVault;
+
+    #[contractimpl]
+    impl MockVault {
+        pub fn deposit(env: Env, from: Address, token: Address, amount: i128, stream_id: u64) {
+            from.require_auth();
+            token::Client::new(&env, &token).transfer(&from, &env.current_contract_address(), &amount);
+            let key = Key::Balance(stream_id);
+            let bal: i128 = env.storage().persistent().get(&key).unwrap_or(0);
+            env.storage().persistent().set(&key, &(bal + amount));
+        }
+
+        pub fn release(env: Env, caller: Address, to: Address, token: Address, amount: i128, stream_id: u64) {
+            caller.require_auth();
+            let key = Key::Balance(stream_id);
+            let bal: i128 = env.storage().persistent().get(&key).unwrap_or(0);
+            env.storage().persistent().set(&key, &(bal - amount));
+            token::Client::new(&env, &token).transfer(&env.current_contract_address(), &to, &amount);
+        }
+
+        pub fn refund(env: Env, caller: Address, to: Address, token: Address, amount: i128, stream_id: u64) {
+            Self::release(env, caller, to, token, amount, stream_id);
+        }
+
+        pub fn balance_of_stream(env: Env, stream_id: u64) -> i128 {
+            env.storage().persistent().get(&Key::Balance(stream_id)).unwrap_or(0)
+        }
+    }
+}
+
+use mock_vault::{MockVault, MockVaultClient};
 
 struct TestCtx {
     env: Env,
     stream: StreamContractClient<'static>,
-    vault: VaultContractClient<'static>,
+    vault: MockVaultClient<'static>,
+    #[allow(dead_code)]
     admin: Address,
     sender: Address,
     recipient: Address,
@@ -40,10 +92,9 @@ fn setup() -> TestCtx {
     let stream_id = env.register(StreamContract, ());
     let stream = StreamContractClient::new(&env, &stream_id);
 
-    let vault_id = env.register(VaultContract, ());
-    let vault = VaultContractClient::new(&env, &vault_id);
+    let vault_id = env.register(MockVault, ());
+    let vault = MockVaultClient::new(&env, &vault_id);
 
-    vault.initialize(&admin, &stream_id);
     stream.initialize(&admin, &vault_id);
 
     TestCtx {
