@@ -166,8 +166,13 @@ impl StreamContract {
     }
 
     /// Convenience: withdraws the entire currently-withdrawable balance.
+    ///
+    /// Note: authorization is checked once, inside the delegated call to
+    /// [`Self::withdraw`] -- calling `require_auth()` a second time here
+    /// for the same address within the same invocation is rejected by
+    /// Soroban's auth framework ("frame is already authorized"), so this
+    /// function must NOT also call `recipient.require_auth()` itself.
     pub fn withdraw_max(env: Env, recipient: Address, stream_id: u64) -> Result<i128, StreamError> {
-        recipient.require_auth();
         let stream = storage::get_stream(&env, stream_id).ok_or(StreamError::StreamNotFound)?;
         if stream.recipient != recipient {
             return Err(StreamError::Unauthorized);
