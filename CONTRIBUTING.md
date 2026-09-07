@@ -13,8 +13,14 @@ real-time payment streaming. Sister repos:
 2. **Add the WASM target**, which is what contracts actually compile to
    for deployment:
    ```bash
-   rustup target add wasm32-unknown-unknown
+   rustup target add wasm32v1-none
    ```
+   Note: this is `wasm32v1-none`, not the older `wasm32-unknown-unknown`.
+   `soroban-sdk` 27.x refuses to build for `wasm32-unknown-unknown` on
+   Rust 1.82+ because that target now enables WASM reference-types and
+   multi-value by default, which the Soroban host environment doesn't yet
+   support; `wasm32v1-none` is the "no new features" WASM target Soroban
+   expects. This repo's `rust-toolchain.toml` already pins the right one.
 3. **Install the Stellar CLI**, used for local sandboxes, optimizing WASM,
    and deploying:
    ```bash
@@ -38,7 +44,7 @@ cargo test
 cargo test -p stellar-stream-hive-stream
 
 # Compile every contract to the real deployment artifact
-cargo build --target wasm32-unknown-unknown --release \
+cargo build --target wasm32v1-none --release \
   -p stellar-stream-hive-vault \
   -p stellar-stream-hive-stream \
   -p stellar-stream-hive-registry
@@ -50,7 +56,7 @@ scripts/deploy.sh testnet deployer
 ```
 
 A contract that only passes `cargo test` but fails to compile to
-`wasm32-unknown-unknown` is not done — that WASM build is the actual thing
+`wasm32v1-none` is not done — that WASM build is the actual thing
 that gets deployed, and `#![no_std]` + Soroban SDK code can behave (or
 fail to compile) subtly differently under the WASM target than under your
 native host target. Always check both before calling something finished.

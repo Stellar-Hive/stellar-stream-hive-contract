@@ -36,13 +36,13 @@ if ! command -v stellar >/dev/null 2>&1; then
 fi
 
 echo
-echo "-- Building all contracts to wasm32-unknown-unknown (release) --"
-cargo build --target wasm32-unknown-unknown --release \
+echo "-- Building all contracts to wasm32v1-none (release) --"
+cargo build --target wasm32v1-none --release \
   -p stellar-stream-hive-vault \
   -p stellar-stream-hive-stream \
   -p stellar-stream-hive-registry
 
-WASM_DIR="target/wasm32-unknown-unknown/release"
+WASM_DIR="target/wasm32v1-none/release"
 VAULT_WASM="$WASM_DIR/stellar_stream_hive_vault.wasm"
 STREAM_WASM="$WASM_DIR/stellar_stream_hive_stream.wasm"
 REGISTRY_WASM="$WASM_DIR/stellar_stream_hive_registry.wasm"

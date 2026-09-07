@@ -18,17 +18,17 @@ jobs:
         run: cargo test --workspace --verbose
 
   wasm-build:
-    name: Build (wasm32-unknown-unknown)
+    name: Build (wasm32v1-none)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32v1-none
       - uses: Swatinem/rust-cache@v2
       - name: Build every contract to the real deployment artifact
         run: |
-          cargo build --target wasm32-unknown-unknown --release \
+          cargo build --target wasm32v1-none --release \
             -p stellar-stream-hive-vault \
             -p stellar-stream-hive-stream \
             -p stellar-stream-hive-registry

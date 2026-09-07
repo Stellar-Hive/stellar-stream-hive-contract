@@ -48,7 +48,7 @@ Three contracts, each a workspace member under `contracts/`:
 ## Quickstart
 
 Requires Rust (via [rustup](https://rustup.rs)), the
-`wasm32-unknown-unknown` target, and the
+`wasm32v1-none` target, and the
 [Stellar CLI](https://developer.stellar.org/docs/tools/cli). Full setup
 instructions are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -60,7 +60,7 @@ cd stellar-stream-hive-contract
 cargo test
 
 # Build the real deployment artifacts
-cargo build --target wasm32-unknown-unknown --release \
+cargo build --target wasm32v1-none --release \
   -p stellar-stream-hive-vault \
   -p stellar-stream-hive-stream \
   -p stellar-stream-hive-registry
