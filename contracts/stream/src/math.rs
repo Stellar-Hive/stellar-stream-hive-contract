@@ -193,10 +193,24 @@ mod tests {
     #[test]
     fn streamed_never_exceeds_total_amount() {
         let env = Env::default();
-        let s = make_stream(&env, 0, 7, 0, i128::MAX / 2);
+        // total_amount is deliberately huge (but still small enough that
+        // total_amount * elapsed cannot overflow i128 for this stream's
+        // 7-ledger duration) to exercise the invariant at scale without
+        // tripping the checked_mul overflow guard itself.
+        let s = make_stream(&env, 0, 7, 0, i128::MAX / 10);
         for now in 0..=20u32 {
             let amt = streamed_amount(&s, now).unwrap();
             assert!(amt <= s.total_amount);
         }
+    }
+
+    #[test]
+    fn streamed_amount_overflow_is_caught_not_panicked() {
+        let env = Env::default();
+        // total_amount * elapsed genuinely cannot fit in i128 here
+        // (i128::MAX * 7 overflows). This must surface as a typed
+        // MathOverflow error, never a raw arithmetic panic.
+        let s = make_stream(&env, 0, 7, 0, i128::MAX);
+        assert_eq!(streamed_amount(&s, 3), Err(StreamError::MathOverflow));
     }
 }
