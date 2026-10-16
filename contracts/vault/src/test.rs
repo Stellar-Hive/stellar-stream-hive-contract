@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::{VaultContract, VaultContractClient};
+use crate::{VaultContract, VaultContractClient, VaultError};
 use soroban_sdk::{testutils::Address as _, token, Address, Env};
 
 struct TestCtx {
@@ -116,7 +116,6 @@ fn test_release_by_stream_contract_succeeds() {
 }
 
 #[test]
-#[should_panic]
 fn test_release_rejects_non_stream_contract_caller() {
     // SECURITY: this is the hard boundary. Anyone who is NOT the
     // configured stream contract must be rejected, even if they
@@ -128,8 +127,10 @@ fn test_release_rejects_non_stream_contract_caller() {
     ctx.token_sac.mint(&depositor, &1_000);
     ctx.vault.deposit(&depositor, &ctx.token_address, &500, &1);
 
-    ctx.vault
-        .release(&attacker, &recipient, &ctx.token_address, &200, &1);
+    let result = ctx
+        .vault
+        .try_release(&attacker, &recipient, &ctx.token_address, &200, &1);
+    assert_eq!(result, Err(Ok(VaultError::Unauthorized)));
 }
 
 #[test]
