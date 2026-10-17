@@ -26,6 +26,18 @@
 
 set -euo pipefail
 
+# Prints the usage block from the header comment above.
+usage() {
+  awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
+}
+
+case "${1:-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
 NETWORK="${1:-testnet}"
 SOURCE="${2:-deployer}"
 
@@ -82,6 +94,11 @@ expect_eq() {
   fi
   echo "ok: $what"
 }
+
+if command -v rustup >/dev/null 2>&1 \
+  && ! rustup target list --installed | grep -qx "wasm32v1-none"; then
+  die "the wasm32v1-none target is not installed. Install it with: rustup target add wasm32v1-none"
+fi
 
 echo
 echo "-- Building all contracts to wasm32v1-none (release) --"
@@ -153,6 +170,14 @@ expect_eq "stream contract starts unpaused" "$(invoke "$STREAM_ID" is_paused | u
 
 DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 mkdir -p deployments
+
+# Keep the previous ids: funds may still sit in the old contracts.
+if [ -f "deployments/$NETWORK.json" ]; then
+  BACKUP="deployments/$NETWORK.$(date -u +%Y%m%dT%H%M%SZ).json.bak"
+  cp "deployments/$NETWORK.json" "$BACKUP"
+  echo "kept the previous deployment record as $BACKUP"
+fi
+
 cat > "deployments/$NETWORK.json" <<EOF
 {
   "network": "$NETWORK",

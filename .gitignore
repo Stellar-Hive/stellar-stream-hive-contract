@@ -3,6 +3,8 @@
 .soroban
 test_snapshots/
 *.wasm
+# Backups of earlier deployment records, kept locally by scripts/deploy.sh
+deployments/*.bak
 .DS_Store
 *.swp
 .vscode/
