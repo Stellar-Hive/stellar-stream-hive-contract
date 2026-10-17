@@ -36,6 +36,9 @@ real-time payment streaming. Sister repos:
 
 ## Build, test, deploy
 
+The `justfile` wraps the commands below: `just test`, `just fmt`, `just lint`, `just wasm`, and
+`just check` to run everything CI runs. Install [just](https://just.systems) to use it.
+
 ```bash
 # Run every test in the workspace (vault, stream, registry)
 cargo test
@@ -149,3 +152,7 @@ non-linear curve) without disturbing existing streams:
 - New public contract functions need tests covering both the happy path
   and at least one rejection path (bad auth, bad input, or a broken
   invariant).
+
+## Code of conduct
+
+This project follows the [Code of Conduct](CODE_OF_CONDUCT.md). Report unacceptable behavior through the private reporting link in [SECURITY.md](SECURITY.md).

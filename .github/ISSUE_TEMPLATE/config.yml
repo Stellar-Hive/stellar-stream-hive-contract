@@ -1,0 +1,4 @@
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Stellar-Hive/stellar-stream-hive-contract/security/advisories/new
+    about: Private reporting for anything that could put funds at risk. See SECURITY.md.
