@@ -269,6 +269,32 @@ fn test_withdraw_max_pulls_entire_withdrawable_balance() {
 }
 
 #[test]
+fn test_withdraw_max_returns_zero_before_cliff() {
+    let ctx = setup();
+    // cliff well after start so streaming has begun but cliff hasn't hit.
+    let id = ctx.stream.create_stream(
+        &ctx.sender,
+        &ctx.recipient,
+        &ctx.token_address,
+        &AMOUNT,
+        &START,
+        &END,
+        &(START + 400),
+        &true,
+    );
+    set_ledger(&ctx, START + 200);
+    assert!(ctx.stream.streamed_amount(&id) > 0);
+
+    let balance_before = ctx.token.balance(&ctx.recipient);
+    let amount = ctx.stream.withdraw_max(&ctx.recipient, &id);
+
+    assert_eq!(amount, 0);
+    assert_eq!(ctx.token.balance(&ctx.recipient), balance_before);
+    assert_eq!(ctx.stream.withdrawable_amount(&id), 0);
+    assert_eq!(ctx.stream.get_stream(&id).withdrawn, 0);
+}
+
+#[test]
 fn test_withdraw_max_rejects_non_recipient_caller() {
     let ctx = setup();
     let id = create_default_stream(&ctx, true);
@@ -756,13 +782,45 @@ fn test_page_size_is_capped() {
 
 #[test]
 fn test_create_event_carries_cliff_and_cancellable() {
-    use soroban_sdk::testutils::Events as _;
+    use soroban_sdk::{symbol_short, testutils::Events as _, vec};
     let ctx = setup();
-    create_default_stream(&ctx, false);
-    // The indexer reconstructs a stream purely from events, so the create
-    // event must be emitted by the stream contract.
-    let events = ctx.env.events().all();
-    assert!(!events.events().is_empty());
+
+    // A cliff distinct from both START and END, and cancellable = false, so a
+    // regression that dropped or defaulted either field would be caught.
+    let cliff = START + 500;
+    let cancellable = false;
+    let id = ctx.stream.create_stream(
+        &ctx.sender,
+        &ctx.recipient,
+        &ctx.token_address,
+        &AMOUNT,
+        &START,
+        &END,
+        &cliff,
+        &cancellable,
+    );
+
+    // The indexer reconstructs a stream purely from the create event, so the
+    // payload must carry all eight data fields:
+    // sender, recipient, token, total_amount, start_ledger, end_ledger,
+    // cliff_ledger, cancellable.
+    let expected = (
+        ctx.stream.address.clone(),
+        (symbol_short!("create"), id).into_val(&ctx.env),
+        (
+            ctx.sender.clone(),
+            ctx.recipient.clone(),
+            ctx.token_address.clone(),
+            AMOUNT,
+            START,
+            END,
+            cliff,
+            cancellable,
+        )
+            .into_val(&ctx.env),
+    );
+
+    assert_eq!(ctx.env.events().all(), vec![&ctx.env, expected]);
 }
 
 #[test]
@@ -1205,3 +1263,112 @@ fn test_recipient_cannot_withdraw_more_than_frozen_share_after_cancel() {
     );
 }
 
+// ---------------------------------------------------------------------
+// Boundary tests (#33, #34, #35, #36)
+// ---------------------------------------------------------------------
+
+/// #33 — Cancelling exactly at start_ledger (with cliff == start) refunds
+/// the full deposit to the sender: elapsed is 0, so streamed_now is 0 and
+/// the entire amount is the remainder.
+#[test]
+fn test_cancel_at_start_ledger_refunds_everything() {
+    let ctx = setup();
+    let balance_before = ctx.token.balance(&ctx.sender);
+
+    // CLIFF == START (the default create_default_stream parameters).
+    let id = create_default_stream(&ctx, true);
+    set_ledger(&ctx, START);
+
+    ctx.stream.cancel_stream(&ctx.sender, &id);
+
+    // The cancel event must report streamed_now == 0.
+    let stream = ctx.stream.get_stream(&id);
+    assert_eq!(ctx.stream.streamed_amount(&id), 0);
+
+    // Sender must be exactly as rich as before the stream was created.
+    assert_eq!(ctx.token.balance(&ctx.sender), balance_before);
+
+    // Nothing left in the vault for this stream.
+    assert_eq!(ctx.vault.balance_of_stream(&id), 0);
+
+    // Recipient can withdraw nothing.
+    assert_eq!(ctx.stream.withdrawable_amount(&id), 0);
+    assert_eq!(stream.status, StreamStatus::Cancelled);
+}
+
+/// #34 — Cancelling exactly at end_ledger returns AlreadyFinalized because
+/// the stream's derived status is Completed at now >= end_ledger.
+#[test]
+fn test_cancel_at_end_ledger_returns_already_finalized() {
+    let ctx = setup();
+    let id = create_default_stream(&ctx, true);
+    set_ledger(&ctx, END);
+
+    assert_eq!(
+        ctx.stream.try_cancel_stream(&ctx.sender, &id),
+        Err(Ok(StreamError::AlreadyFinalized)),
+    );
+
+    // The stream must still be Completed (not mutated by the failed cancel).
+    assert_eq!(ctx.stream.get_status(&id), StreamStatus::Completed);
+}
+
+/// #35 — create_stream must accept cliff == start_ledger and cliff == end_ledger.
+/// Both are valid per the condition `cliff < start || cliff > end` (exclusive).
+#[test]
+fn test_create_stream_accepts_cliff_equal_to_start() {
+    let ctx = setup();
+    let id = ctx.stream.create_stream(
+        &ctx.sender,
+        &ctx.recipient,
+        &ctx.token_address,
+        &AMOUNT,
+        &START,
+        &END,
+        &START, // cliff == start
+        &true,
+    );
+    let stream = ctx.stream.get_stream(&id);
+    assert_eq!(stream.cliff_ledger, START);
+}
+
+#[test]
+fn test_create_stream_accepts_cliff_equal_to_end() {
+    let ctx = setup();
+    let id = ctx.stream.create_stream(
+        &ctx.sender,
+        &ctx.recipient,
+        &ctx.token_address,
+        &AMOUNT,
+        &START,
+        &END,
+        &END, // cliff == end
+        &true,
+    );
+    let stream = ctx.stream.get_stream(&id);
+    assert_eq!(stream.cliff_ledger, END);
+}
+
+/// #36 — create_stream must reject a negative total_amount (the guard is
+/// `total_amount <= 0`, so –1 must return InvalidAmount just like 0).
+#[test]
+fn test_create_stream_rejects_negative_amount() {
+    let ctx = setup();
+    let balance_before = ctx.token.balance(&ctx.sender);
+
+    let result = ctx.stream.try_create_stream(
+        &ctx.sender,
+        &ctx.recipient,
+        &ctx.token_address,
+        &(-1_i128),
+        &START,
+        &END,
+        &CLIFF,
+        &true,
+    );
+
+    assert_eq!(result, Err(Ok(StreamError::InvalidAmount)));
+
+    // No tokens must have moved.
+    assert_eq!(ctx.token.balance(&ctx.sender), balance_before);
+}
