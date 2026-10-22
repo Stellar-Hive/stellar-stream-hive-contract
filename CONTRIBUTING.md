@@ -87,6 +87,38 @@ that gets deployed, and `#![no_std]` + Soroban SDK code can behave (or
 fail to compile) subtly differently under the WASM target than under your
 native host target. Always check both before calling something finished.
 
+## Before opening a pull request
+
+Passing tests are not enough: CI (`.github/workflows/ci.yml`) also fails a
+PR on `cargo fmt --all -- --check` and on clippy with `-D warnings`. Run
+the exact commands CI runs before pushing — these are the same two
+commands the `just lint` recipe wraps (the pinned `rust-toolchain.toml`
+installs `rustfmt` and `clippy` for you; if you override the toolchain,
+add them with `rustup component add rustfmt clippy`):
+
+```bash
+# Check formatting across the whole workspace.
+cargo fmt --all -- --check
+
+# Lint with every warning denied. The two -A flags match CI exactly:
+# they exempt too_many_arguments and needless_borrows_for_generic_args,
+# which Soroban's ABI-driven function signatures and client call style
+# trip by construction.
+cargo clippy --workspace --all-targets -- -D warnings \
+  -A clippy::too_many_arguments \
+  -A clippy::needless_borrows_for_generic_args
+```
+
+If the formatting check fails, `cargo fmt --all` (the same command without
+`--check`) rewrites the files in place and fixes every violation it just
+reported. If clippy flags code you did not mean to touch, fix the warning
+or refactor — the two `-A` exemptions above are the only ones CI makes.
+
+`just check` runs all three gates in one shot: lint (fmt + clippy),
+`cargo test --workspace`, and the `wasm32v1-none` build. If you are not
+using `just`, run those three by hand as spelled out above and in
+"Build, test, deploy".
+
 ## Dependency audits
 
 `cargo audit` runs on every pull request and weekly on a schedule
