@@ -104,7 +104,6 @@ fn test_register_stream_rejects_negative_amount() {
 }
 
 #[test]
-#[should_panic]
 fn test_register_stream_rejects_duplicate_id() {
     let ctx = setup();
     let sender = Address::generate(&ctx.env);
@@ -113,8 +112,10 @@ fn test_register_stream_rejects_duplicate_id() {
 
     ctx.registry
         .register_stream(&1, &sender, &recipient, &token, &1000);
-    ctx.registry
-        .register_stream(&1, &sender, &recipient, &token, &500);
+    let result = ctx
+        .registry
+        .try_register_stream(&1, &sender, &recipient, &token, &500);
+    assert_eq!(result, Err(Ok(RegistryError::AlreadyRegistered)));
 }
 
 #[test]
