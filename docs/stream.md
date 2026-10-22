@@ -242,10 +242,19 @@ address and function-name symbol (see `contracts/stream/src/vault_client.rs`),
 rather than depending on the vault crate as a Rust library dependency.
 This keeps the two contracts fully decoupled at compile time — no fixed
 build order, no WASM-artifact dependency between crates — while producing
-exactly the same on-chain call as a generated `Client` would. Integration
-tests use the real vault contract (via a `dev-dependency` on the vault
-crate, only active for `cargo test`, never for the WASM release build) so
-the full deposit → withdraw → release path is tested end-to-end.
+exactly the same on-chain call as a generated `Client` would.
+
+The stream crate's tests do not depend on the vault crate. Instead,
+`contracts/stream/src/test.rs` defines an in-file `MockVault` — a minimal
+stand-in registered as a contract in the test `Env` — so the stream
+contract's full create → deposit → withdraw → release → cancel → refund
+flow is exercised through real cross-contract invocation, without a Rust
+dependency on the vault crate. The real vault's security boundary
+(including the caller check that only the configured stream contract may
+call it) and its balance accounting are covered by the vault crate's own
+tests in `contracts/vault/src/test.rs`. Note that the mock deliberately
+does **not** enforce that caller check, so it must not be relied on to
+validate vault-side authorization.
 
 ## Errors
 
