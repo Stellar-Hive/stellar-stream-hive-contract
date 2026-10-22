@@ -756,13 +756,45 @@ fn test_page_size_is_capped() {
 
 #[test]
 fn test_create_event_carries_cliff_and_cancellable() {
-    use soroban_sdk::testutils::Events as _;
+    use soroban_sdk::{symbol_short, testutils::Events as _, vec};
     let ctx = setup();
-    create_default_stream(&ctx, false);
-    // The indexer reconstructs a stream purely from events, so the create
-    // event must be emitted by the stream contract.
-    let events = ctx.env.events().all();
-    assert!(!events.events().is_empty());
+
+    // A cliff distinct from both START and END, and cancellable = false, so a
+    // regression that dropped or defaulted either field would be caught.
+    let cliff = START + 500;
+    let cancellable = false;
+    let id = ctx.stream.create_stream(
+        &ctx.sender,
+        &ctx.recipient,
+        &ctx.token_address,
+        &AMOUNT,
+        &START,
+        &END,
+        &cliff,
+        &cancellable,
+    );
+
+    // The indexer reconstructs a stream purely from the create event, so the
+    // payload must carry all eight data fields:
+    // sender, recipient, token, total_amount, start_ledger, end_ledger,
+    // cliff_ledger, cancellable.
+    let expected = (
+        ctx.stream.address.clone(),
+        (symbol_short!("create"), id).into_val(&ctx.env),
+        (
+            ctx.sender.clone(),
+            ctx.recipient.clone(),
+            ctx.token_address.clone(),
+            AMOUNT,
+            START,
+            END,
+            cliff,
+            cancellable,
+        )
+            .into_val(&ctx.env),
+    );
+
+    assert_eq!(ctx.env.events().all(), vec![&ctx.env, expected]);
 }
 
 #[test]

@@ -249,11 +249,19 @@ fn test_update_stream_to_cancelled_decrements_active_count() {
 }
 
 #[test]
-#[should_panic]
 fn test_update_stream_rejects_unknown_id() {
     let ctx = setup();
-    ctx.registry
-        .update_stream(&999, &100, &StreamStatus::Active);
+    let result = ctx
+        .registry
+        .try_update_stream(&999, &100, &StreamStatus::Active);
+    assert_eq!(result, Err(Ok(RegistryError::StreamNotFound)));
+}
+
+#[test]
+fn test_get_stream_record_rejects_unknown_id() {
+    let ctx = setup();
+    let result = ctx.registry.try_get_stream_record(&999);
+    assert_eq!(result, Err(Ok(RegistryError::StreamNotFound)));
 }
 
 #[test]
