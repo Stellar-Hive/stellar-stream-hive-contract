@@ -141,7 +141,7 @@ impl VaultContract {
     /// cancellable stream is cancelled and unstreamed funds must return to
     /// the sender.
     ///
-    /// SECURITY: identical caller check to [`release`].
+    /// SECURITY: identical caller check to `release`.
     ///
     /// # Errors
     ///

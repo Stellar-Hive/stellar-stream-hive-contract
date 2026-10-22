@@ -179,7 +179,10 @@ fn test_get_admin_before_initialize_returns_not_initialized() {
     let id = env.register(RegistryContract, ());
     let registry = RegistryContractClient::new(&env, &id);
 
-    assert_eq!(registry.try_get_admin(), Err(Ok(RegistryError::NotInitialized)));
+    assert_eq!(
+        registry.try_get_admin(),
+        Err(Ok(RegistryError::NotInitialized))
+    );
 }
 
 #[test]
@@ -208,12 +211,10 @@ fn test_cancelled_to_completed_keeps_active_count_at_zero() {
     ctx.registry
         .register_stream(&1, &sender, &recipient, &token, &1000);
 
-    ctx.registry
-        .update_stream(&1, &0, &StreamStatus::Cancelled);
+    ctx.registry.update_stream(&1, &0, &StreamStatus::Cancelled);
     assert_eq!(ctx.registry.get_stats().active_streams, 0);
 
-    ctx.registry
-        .update_stream(&1, &0, &StreamStatus::Completed);
+    ctx.registry.update_stream(&1, &0, &StreamStatus::Completed);
     assert_eq!(ctx.registry.get_stats().active_streams, 0);
 }
 

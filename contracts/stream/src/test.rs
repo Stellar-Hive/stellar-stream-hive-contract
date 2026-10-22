@@ -4,7 +4,7 @@ use crate::types::StreamStatus;
 use crate::{StreamContract, StreamContractClient};
 use soroban_sdk::{
     testutils::{Address as _, Ledger as _},
-    token, Address, Env, IntoVal,
+    token, Address, Env,
 };
 
 /// A minimal stand-in for the real vault contract, used only so the stream
@@ -365,10 +365,7 @@ fn test_cancel_after_partial_withdrawal_splits_funds() {
     // Sender is refunded the unstreamed half (total - streamed).
     assert_eq!(ctx.token.balance(&ctx.sender), AMOUNT * 9 + AMOUNT / 2);
     // Recipient can still claim streamed - withdrawn.
-    assert_eq!(
-        ctx.stream.withdrawable_amount(&id),
-        AMOUNT / 2 - AMOUNT / 8
-    );
+    assert_eq!(ctx.stream.withdrawable_amount(&id), AMOUNT / 2 - AMOUNT / 8);
 
     ctx.stream.withdraw_max(&ctx.recipient, &id);
     // Recipient's final balance equals the streamed amount.
@@ -655,7 +652,11 @@ fn test_pause_unpause_and_transfer_admin_each_emit_one_event() {
     let ctx = setup();
 
     ctx.stream.pause();
-    assert_eq!(ctx.env.events().all().events().len(), 1, "pause emits Pause");
+    assert_eq!(
+        ctx.env.events().all().events().len(),
+        1,
+        "pause emits Pause"
+    );
 
     ctx.stream.unpause();
     assert_eq!(

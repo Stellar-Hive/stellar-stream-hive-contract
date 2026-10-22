@@ -25,6 +25,19 @@ the deployment script. Of particular interest:
 - anything that can trap funds in a stream (the `pause` switch is designed
   never to).
 
+## Supported versions
+
+Security fixes land on `main` and only on `main`. There are no release
+branches and no tagged releases, so "the latest release" always means
+current `main`; the `0.1.0` entry in `CHANGELOG.md` marks the initial
+contracts, not a separately maintained version line.
+
+| Version / deployment | Supported |
+|---|---|
+| `main` | Yes — the only line that receives fixes |
+| Testnet deployment of 2026-10-12 (see [`DEPLOYMENTS.md`](DEPLOYMENTS.md)) | Built from `main` at that date. Fixes are **not** applied on-chain retroactively — redeploy from the fixed `main` to pick them up. |
+| Mainnet | Not deployed. Mainnet deployment will only follow a successful testnet deployment, a completed audit, and explicit sign-off (see [`DEPLOYMENTS.md`](DEPLOYMENTS.md)). |
+
 ## Status
 
 The contracts have **not** been externally audited. Do not use them with

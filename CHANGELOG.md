@@ -32,6 +32,15 @@ All notable changes to the Stellar Stream Hive contracts. Format follows
 - `SECURITY.md` with a private disclosure process.
 
 ### Changed
+- **Toolchain / CI:** the pinned Rust version in `rust-toolchain.toml` moves
+  from 1.85.0 to 1.91.0 — the floor the locked dependencies require
+  (`soroban-sdk` 27.0.6 declares `rust-version = 1.91.0`) — and the file now
+  also declares the `rustfmt` and `clippy` components; `ci.yml` mirrors the
+  new version. Until this, every CI job on `main` failed before running a
+  single check: rustup's auto-install of the pinned toolchain omitted
+  `cargo-fmt`, and cargo refused to build the lockfile on 1.85.0. Test code
+  left unformatted by recent merges is reformatted so
+  `cargo fmt --all -- --check` is clean again.
 - **Deploy script:** validates the network and identity up front, requires
   `CONFIRM_MAINNET=yes` for mainnet, verifies the deployed wiring on-chain,
   and writes `deployments/<network>.json` with WASM hashes plus ready-to-paste
