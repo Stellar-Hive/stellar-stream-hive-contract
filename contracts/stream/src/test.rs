@@ -1,4 +1,4 @@
-#![cfg(test)]
+﻿#![cfg(test)]
 
 use crate::types::StreamStatus;
 use crate::{StreamContract, StreamContractClient};
@@ -437,10 +437,9 @@ fn test_cancel_rejected_after_completion() {
 }
 
 #[test]
-#[should_panic]
 fn test_create_stream_rejects_invalid_time_range() {
     let ctx = setup();
-    ctx.stream.create_stream(
+    let result = ctx.stream.try_create_stream(
         &ctx.sender,
         &ctx.recipient,
         &ctx.token_address,
@@ -450,13 +449,13 @@ fn test_create_stream_rejects_invalid_time_range() {
         &START,
         &true,
     );
+    assert_eq!(result, Err(Ok(StreamError::InvalidTimeRange)));
 }
 
 #[test]
-#[should_panic]
 fn test_create_stream_rejects_cliff_before_start() {
     let ctx = setup();
-    ctx.stream.create_stream(
+    let result = ctx.stream.try_create_stream(
         &ctx.sender,
         &ctx.recipient,
         &ctx.token_address,
@@ -466,6 +465,7 @@ fn test_create_stream_rejects_cliff_before_start() {
         &(START - 1),
         &true,
     );
+    assert_eq!(result, Err(Ok(StreamError::InvalidCliff)));
 }
 
 #[test]
