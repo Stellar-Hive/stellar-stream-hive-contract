@@ -1,5 +1,12 @@
 [toolchain]
-channel = "1.85.0"
+# 1.91.0 is the floor set by the locked dependencies: soroban-sdk 27.0.6
+# (and soroban-ledger-snapshot 27.0.6) declare rust-version = 1.91.0, and
+# cargo refuses to build the lockfile on anything older.
+channel = "1.91.0"
+# Without these, rustup's auto-install of the pinned toolchain omits them
+# and CI's lint job dies with "'cargo-fmt' is not installed" before running
+# a single check.
+components = ["rustfmt", "clippy"]
 # soroban-sdk 27.x requires wasm32v1-none (not wasm32-unknown-unknown) on
 # Rust 1.82+: newer rustc enables wasm reference-types/multi-value by
 # default, which the Soroban host environment does not yet support.
