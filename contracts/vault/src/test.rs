@@ -87,11 +87,13 @@ fn test_deposit_accumulates_across_multiple_calls() {
 }
 
 #[test]
-#[should_panic]
 fn test_deposit_rejects_zero_amount() {
     let ctx = setup();
     let depositor = Address::generate(&ctx.env);
-    ctx.vault.deposit(&depositor, &ctx.token_address, &0, &1);
+    let result = ctx
+        .vault
+        .try_deposit(&depositor, &ctx.token_address, &0, &1);
+    assert_eq!(result, Err(Ok(VaultError::InvalidAmount)));
 }
 
 #[test]
