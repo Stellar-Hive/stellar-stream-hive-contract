@@ -123,7 +123,7 @@ impl StreamContract {
     }
 
     /// Total value accrued so far, ignoring withdrawals. See
-    /// [`math::streamed_amount`] for the exact formula.
+    /// `math::streamed_amount` for the exact formula.
     ///
     /// # Errors
     ///

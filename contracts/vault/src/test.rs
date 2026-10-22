@@ -317,13 +317,9 @@ fn test_release_and_refund_reject_zero_and_negative_amounts() {
     ctx.token_sac.mint(&depositor, &1_000);
     ctx.vault.deposit(&depositor, &ctx.token_address, &500, &1);
 
-    let res_zero_release = ctx.vault.try_release(
-        &ctx.stream_contract,
-        &recipient,
-        &ctx.token_address,
-        &0,
-        &1,
-    );
+    let res_zero_release =
+        ctx.vault
+            .try_release(&ctx.stream_contract, &recipient, &ctx.token_address, &0, &1);
     assert_eq!(res_zero_release, Err(Ok(VaultError::InvalidAmount)));
 
     let res_neg_release = ctx.vault.try_release(
@@ -335,22 +331,14 @@ fn test_release_and_refund_reject_zero_and_negative_amounts() {
     );
     assert_eq!(res_neg_release, Err(Ok(VaultError::InvalidAmount)));
 
-    let res_zero_refund = ctx.vault.try_refund(
-        &ctx.stream_contract,
-        &sender,
-        &ctx.token_address,
-        &0,
-        &1,
-    );
+    let res_zero_refund =
+        ctx.vault
+            .try_refund(&ctx.stream_contract, &sender, &ctx.token_address, &0, &1);
     assert_eq!(res_zero_refund, Err(Ok(VaultError::InvalidAmount)));
 
-    let res_neg_refund = ctx.vault.try_refund(
-        &ctx.stream_contract,
-        &sender,
-        &ctx.token_address,
-        &-1,
-        &1,
-    );
+    let res_neg_refund =
+        ctx.vault
+            .try_refund(&ctx.stream_contract, &sender, &ctx.token_address, &-1, &1);
     assert_eq!(res_neg_refund, Err(Ok(VaultError::InvalidAmount)));
 
     assert_eq!(ctx.vault.balance_of_stream(&1), 500);
@@ -365,13 +353,9 @@ fn test_refund_rejects_amount_exceeding_balance() {
     ctx.token_sac.mint(&depositor, &1_000);
     ctx.vault.deposit(&depositor, &ctx.token_address, &100, &1);
 
-    let result = ctx.vault.try_refund(
-        &ctx.stream_contract,
-        &sender,
-        &ctx.token_address,
-        &101,
-        &1,
-    );
+    let result = ctx
+        .vault
+        .try_refund(&ctx.stream_contract, &sender, &ctx.token_address, &101, &1);
     assert_eq!(result, Err(Ok(VaultError::InsufficientBalance)));
     assert_eq!(ctx.vault.balance_of_stream(&1), 100);
     assert_eq!(ctx.token.balance(&sender), 0);
@@ -495,13 +479,9 @@ fn test_refund_with_wrong_token_returns_token_mismatch() {
     let other_token = other_sac.address();
     let other_token_client = token::Client::new(&ctx.env, &other_token);
 
-    let result = ctx.vault.try_refund(
-        &ctx.stream_contract,
-        &sender,
-        &other_token,
-        &100,
-        &1,
-    );
+    let result = ctx
+        .vault
+        .try_refund(&ctx.stream_contract, &sender, &other_token, &100, &1);
     assert_eq!(result, Err(Ok(VaultError::TokenMismatch)));
     assert!(ctx.env.events().all().events().is_empty());
 

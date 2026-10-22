@@ -200,9 +200,9 @@ impl RegistryContract {
     /// Ids of every stream currently recorded as `Active`.
     ///
     /// Reads one ledger entry per registered stream, just like
-    /// [`Self::get_all_streams`], so on a large registry this can exceed
+    /// `get_all_streams`, so on a large registry this can exceed
     /// Soroban's per-transaction resource limits. Prefer
-    /// [`Self::get_streams_page`] and [`Self::stream_count`].
+    /// `get_streams_page` and `stream_count`.
     pub fn get_active_streams(env: Env) -> Vec<u64> {
         let ids = storage::get_all_stream_ids(&env);
         let mut out = Vec::new(&env);
