@@ -134,21 +134,21 @@ fn test_release_rejects_non_stream_contract_caller() {
 }
 
 #[test]
-#[should_panic]
 fn test_release_rejects_amount_exceeding_balance() {
     let ctx = setup();
     let depositor = Address::generate(&ctx.env);
     let recipient = Address::generate(&ctx.env);
     ctx.token_sac.mint(&depositor, &1_000);
-    ctx.vault.deposit(&depositor, &ctx.token_address, &100, &1);
+    ctx.vault.deposit(&depositor, &ctx.token_address, &500, &1);
 
-    ctx.vault.release(
+    let result = ctx.vault.try_release(
         &ctx.stream_contract,
         &recipient,
         &ctx.token_address,
-        &101,
+        &600,
         &1,
     );
+    assert_eq!(result, Err(Ok(VaultError::InsufficientBalance)));
 }
 
 #[test]
