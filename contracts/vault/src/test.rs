@@ -167,7 +167,6 @@ fn test_refund_by_stream_contract_succeeds() {
 }
 
 #[test]
-#[should_panic]
 fn test_refund_rejects_non_stream_contract_caller() {
     let ctx = setup();
     let depositor = Address::generate(&ctx.env);
@@ -176,8 +175,10 @@ fn test_refund_rejects_non_stream_contract_caller() {
     ctx.token_sac.mint(&depositor, &1_000);
     ctx.vault.deposit(&depositor, &ctx.token_address, &500, &2);
 
-    ctx.vault
-        .refund(&attacker, &sender, &ctx.token_address, &500, &2);
+    let result = ctx
+        .vault
+        .try_refund(&attacker, &sender, &ctx.token_address, &500, &2);
+    assert_eq!(result, Err(Ok(VaultError::Unauthorized)));
 }
 
 #[test]
@@ -190,13 +191,14 @@ fn test_set_stream_contract_by_admin() {
 }
 
 #[test]
-#[should_panic]
 fn test_set_stream_contract_rejects_non_admin() {
     let ctx = setup();
     let attacker = Address::generate(&ctx.env);
     let new_stream_contract = Address::generate(&ctx.env);
-    ctx.vault
-        .set_stream_contract(&attacker, &new_stream_contract);
+    let result = ctx
+        .vault
+        .try_set_stream_contract(&attacker, &new_stream_contract);
+    assert_eq!(result, Err(Ok(VaultError::Unauthorized)));
 }
 
 #[test]
@@ -289,7 +291,6 @@ fn test_total_locked_decreases_after_release_and_refund() {
 }
 
 #[test]
-#[should_panic]
 fn test_deposit_rejects_token_mismatch_for_existing_stream() {
     let ctx = setup();
     let depositor = Address::generate(&ctx.env);
@@ -305,7 +306,10 @@ fn test_deposit_rejects_token_mismatch_for_existing_stream() {
     other_client.mint(&depositor, &1_000);
 
     // Same stream id, different token: must be rejected.
-    ctx.vault.deposit(&depositor, &other_token, &100, &1);
+    let result = ctx
+        .vault
+        .try_deposit(&depositor, &other_token, &100, &1);
+    assert_eq!(result, Err(Ok(VaultError::TokenMismatch)));
 }
 
 #[test]
