@@ -39,6 +39,13 @@ case "${1:-}" in
 esac
 
 NETWORK="${1:-testnet}"
+
+case "$NETWORK" in
+  testnet | futurenet | mainnet | local | standalone) ;;
+  *)
+    die "unknown network '$NETWORK'. Expected one of: testnet, futurenet, mainnet, local, standalone"
+    ;;
+esac
 SOURCE="${2:-deployer}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
