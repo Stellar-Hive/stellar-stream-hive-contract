@@ -292,3 +292,11 @@ validate vault-side authorization.
   deposited balance, because `withdrawable_amount` is bounded by
   `streamed_amount <= total_amount`, and `total_amount` is exactly what
   was deposited on creation.
+
+## Edge Cases & Policies
+
+### Self-Streaming Policy (`sender == recipient`)
+
+The smart contract layer does not explicitly reject streams where `sender == recipient`. Because tokens remain fully accounted for in the Vault contract and arithmetic calculations behave deterministically, self-streaming is computationally benign on-chain. However, creating a circular stream is practically redundant:
+- **Client & Frontend Validation**: The official frontend interface blocks identical sender and recipient entries at the form level to protect users from paying unnecessary transaction fees.
+- **Contract Layer Decision**: The on-chain contract intentionally leaves this unblocked to minimize byte size and ledger execution footprint for standard valid streams.
