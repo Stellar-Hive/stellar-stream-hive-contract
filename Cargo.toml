@@ -11,6 +11,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/Stellar-Hive/stellar-stream-hive-contract"
+rust-version = "1.91.0"
 
 [workspace.dependencies]
 soroban-sdk = "27.0.6"
