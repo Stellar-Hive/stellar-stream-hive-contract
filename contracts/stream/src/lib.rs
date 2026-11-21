@@ -35,6 +35,10 @@ pub struct StreamContract;
 impl StreamContract {
     /// One-time setup. Records the admin and the vault that will custody
     /// every stream created through this contract.
+    ///
+    /// # Errors
+    ///
+    /// - `StreamError::AlreadyInitialized`: the contract has already been initialized.
     pub fn initialize(env: Env, admin: Address, vault: Address) -> Result<(), StreamError> {
         if storage::has_admin(&env) {
             return Err(StreamError::AlreadyInitialized);
@@ -374,6 +378,10 @@ impl StreamContract {
     /// Deliberately does NOT block `withdraw`, `withdraw_max` or
     /// `cancel_stream`: pausing is an emergency brake on new deposits, never
     /// a way to trap funds that are already streaming.
+    ///
+    /// # Errors
+    ///
+    /// - `StreamError::NotInitialized`: the contract has not been initialized.
     pub fn pause(env: Env) -> Result<(), StreamError> {
         let admin = storage::get_admin(&env).ok_or(StreamError::NotInitialized)?;
         admin.require_auth();
@@ -383,6 +391,10 @@ impl StreamContract {
     }
 
     /// Admin only. Re-enables `create_stream`.
+    ///
+    /// # Errors
+    ///
+    /// - `StreamError::NotInitialized`: the contract has not been initialized.
     pub fn unpause(env: Env) -> Result<(), StreamError> {
         let admin = storage::get_admin(&env).ok_or(StreamError::NotInitialized)?;
         admin.require_auth();
@@ -399,6 +411,10 @@ impl StreamContract {
     /// Admin only. Hands the admin role to `new_admin`. Both the current
     /// admin and the new admin must authorize, so the role can never be
     /// transferred to an address nobody controls by mistake.
+    ///
+    /// # Errors
+    ///
+    /// - `StreamError::NotInitialized`: the contract has not been initialized.
     pub fn transfer_admin(env: Env, new_admin: Address) -> Result<(), StreamError> {
         let admin = storage::get_admin(&env).ok_or(StreamError::NotInitialized)?;
         admin.require_auth();
