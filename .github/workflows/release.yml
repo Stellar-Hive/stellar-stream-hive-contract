@@ -39,7 +39,7 @@ jobs:
              wasm-dist/
           (cd wasm-dist && sha256sum *.wasm > SHA256SUMS)
           cat wasm-dist/SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-wasm
           path: wasm-dist/
