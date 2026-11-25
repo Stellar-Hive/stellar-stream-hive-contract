@@ -1971,3 +1971,73 @@ fn test_withdraw_max_after_cancel_pays_frozen_share_exactly_once() {
     );
     assert_eq!(ctx.token.balance(&ctx.recipient), balance_before + frozen);
 }
+
+/// #178 — `withdraw_max` before the cliff has nothing to pay out, is rejected,
+/// and publishes no event (in particular, no misleading `withdraw` event).
+#[test]
+fn test_withdraw_max_before_cliff_publishes_no_event() {
+    let ctx = setup();
+    // Cliff well after start so streaming has begun but the cliff has not hit.
+    let id = ctx.stream.create_stream(
+        &ctx.sender,
+        &ctx.recipient,
+        &ctx.token_address,
+        &AMOUNT,
+        &START,
+        &END,
+        &(START + 400),
+        &true,
+    );
+    set_ledger(&ctx, START + 200);
+    assert_eq!(ctx.stream.withdrawable_amount(&id), 0);
+
+    let events_before = contract_events(&ctx.env, &ctx.stream.address);
+    let balance_before = ctx.token.balance(&ctx.recipient);
+
+    assert_eq!(
+        ctx.stream.try_withdraw_max(&ctx.recipient, &id),
+        Err(Ok(crate::error::StreamError::ExceedsWithdrawable)),
+    );
+
+    assert_eq!(ctx.token.balance(&ctx.recipient), balance_before);
+    assert_eq!(
+        contract_events(&ctx.env, &ctx.stream.address),
+        events_before,
+        "a withdraw_max that pays nothing must not publish any event",
+    );
+}
+
+/// #178 — the contrasting case: a `withdraw_max` that pays a positive amount
+/// publishes exactly one `Withdraw` event carrying that amount.
+#[test]
+fn test_withdraw_max_with_positive_amount_publishes_exactly_one_event() {
+    use crate::events;
+    use soroban_sdk::Event as _;
+
+    let ctx = setup();
+    let id = create_default_stream(&ctx, true);
+    let midpoint = START + (END - START) / 2;
+    set_ledger(&ctx, midpoint);
+
+    let payable = ctx.stream.withdrawable_amount(&id);
+    assert!(payable > 0);
+    let events_before = contract_events(&ctx.env, &ctx.stream.address).len();
+
+    ctx.stream.withdraw_max(&ctx.recipient, &id);
+
+    let stream_events = contract_events(&ctx.env, &ctx.stream.address);
+    assert_eq!(
+        stream_events.len(),
+        events_before + 1,
+        "withdraw_max with a positive amount must publish exactly one event",
+    );
+    assert_eq!(
+        stream_events[events_before],
+        events::Withdraw {
+            stream_id: id,
+            recipient: ctx.recipient.clone(),
+            amount: payable,
+        }
+        .to_xdr(&ctx.env, &ctx.stream.address),
+    );
+}
