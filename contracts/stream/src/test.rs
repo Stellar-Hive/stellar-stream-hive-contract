@@ -1943,3 +1943,28 @@ fn test_resource_budget_of_create_stream_withdraw_and_cancel_stream() {
         mem_cancel
     );
 }
+
+/// #179 — withdraw_max on a fully-withdrawn stream is a harmless no-op:
+/// it must return Ok(0) and leave all balances unchanged.
+#[test]
+fn test_withdraw_max_returns_zero_on_fully_withdrawn_stream() {
+    let ctx = setup();
+    let id = create_default_stream(&ctx, true);
+    set_ledger(&ctx, END);
+
+    // Drain the stream completely.
+    let first = ctx.stream.withdraw_max(&ctx.recipient, &id);
+    assert_eq!(first, AMOUNT);
+    assert_eq!(ctx.token.balance(&ctx.recipient), AMOUNT);
+    assert_eq!(ctx.stream.withdrawable_amount(&id), 0);
+    assert_eq!(ctx.vault.balance_of_stream(&id), 0);
+
+    // A second withdraw_max must be a no-op.
+    let second = ctx.stream.withdraw_max(&ctx.recipient, &id);
+    assert_eq!(second, 0);
+
+    // No tokens must have moved.
+    assert_eq!(ctx.token.balance(&ctx.recipient), AMOUNT);
+    assert_eq!(ctx.vault.balance_of_stream(&id), 0);
+    assert_eq!(ctx.stream.withdrawable_amount(&id), 0);
+}
