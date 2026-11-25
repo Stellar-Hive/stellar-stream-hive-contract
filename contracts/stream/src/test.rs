@@ -269,6 +269,21 @@ fn test_withdraw_max_pulls_entire_withdrawable_balance() {
 }
 
 #[test]
+fn test_withdraw_max_returns_zero_on_fully_withdrawn_stream() {
+    let ctx = setup();
+    let id = create_default_stream(&ctx, true);
+    set_ledger(&ctx, END);
+    let amount = ctx.stream.withdraw_max(&ctx.recipient, &id);
+    assert_eq!(amount, AMOUNT);
+    assert_eq!(ctx.token.balance(&ctx.recipient), AMOUNT);
+    assert_eq!(ctx.stream.withdrawable_amount(&id), 0);
+
+    // withdraw_max on a stream that has already been completely withdrawn returns 0
+    let second_amount = ctx.stream.withdraw_max(&ctx.recipient, &id);
+    assert_eq!(second_amount, 0);
+}
+
+#[test]
 fn test_withdraw_max_returns_zero_before_cliff() {
     let ctx = setup();
     // cliff well after start so streaming has begun but cliff hasn't hit.
