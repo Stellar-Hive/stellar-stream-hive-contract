@@ -527,10 +527,9 @@ fn test_create_stream_rejects_cliff_before_start() {
 }
 
 #[test]
-#[should_panic]
 fn test_create_stream_rejects_cliff_after_end() {
     let ctx = setup();
-    ctx.stream.create_stream(
+    let result = ctx.stream.try_create_stream(
         &ctx.sender,
         &ctx.recipient,
         &ctx.token_address,
@@ -540,13 +539,13 @@ fn test_create_stream_rejects_cliff_after_end() {
         &(END + 1),
         &true,
     );
+    assert_eq!(result, Err(Ok(StreamError::InvalidCliff)));
 }
 
 #[test]
-#[should_panic]
 fn test_create_stream_rejects_zero_amount() {
     let ctx = setup();
-    ctx.stream.create_stream(
+    let result = ctx.stream.try_create_stream(
         &ctx.sender,
         &ctx.recipient,
         &ctx.token_address,
@@ -556,6 +555,7 @@ fn test_create_stream_rejects_zero_amount() {
         &START,
         &true,
     );
+    assert_eq!(result, Err(Ok(StreamError::InvalidAmount)));
 }
 
 #[test]
@@ -1944,27 +1944,100 @@ fn test_resource_budget_of_create_stream_withdraw_and_cancel_stream() {
     );
 }
 
-/// #179 — withdraw_max on a fully-withdrawn stream is a harmless no-op:
-/// it must return Ok(0) and leave all balances unchanged.
+/// #177 — after a mid-stream cancel, `withdraw_max` pays the frozen share
+/// exactly once: the first call transfers it, the second transfers nothing.
 #[test]
-fn test_withdraw_max_returns_zero_on_fully_withdrawn_stream() {
+fn test_withdraw_max_after_cancel_pays_frozen_share_exactly_once() {
     let ctx = setup();
     let id = create_default_stream(&ctx, true);
-    set_ledger(&ctx, END);
+    let midpoint = START + (END - START) / 2;
+    set_ledger(&ctx, midpoint);
 
-    // Drain the stream completely.
-    let first = ctx.stream.withdraw_max(&ctx.recipient, &id);
-    assert_eq!(first, AMOUNT);
-    assert_eq!(ctx.token.balance(&ctx.recipient), AMOUNT);
+    ctx.stream.cancel_stream(&ctx.sender, &id);
+    let frozen = ctx.stream.streamed_amount(&id);
+    assert_eq!(frozen, AMOUNT / 2);
+
+    let balance_before = ctx.token.balance(&ctx.recipient);
+
+    // First call pays out exactly the frozen share.
+    ctx.stream.withdraw_max(&ctx.recipient, &id);
+    assert_eq!(ctx.token.balance(&ctx.recipient), balance_before + frozen);
     assert_eq!(ctx.stream.withdrawable_amount(&id), 0);
-    assert_eq!(ctx.vault.balance_of_stream(&id), 0);
 
-    // A second withdraw_max must be a no-op.
-    let second = ctx.stream.withdraw_max(&ctx.recipient, &id);
-    assert_eq!(second, 0);
+    // Second call has nothing left to pay: it is rejected and moves no tokens.
+    assert_eq!(
+        ctx.stream.try_withdraw_max(&ctx.recipient, &id),
+        Err(Ok(crate::error::StreamError::ExceedsWithdrawable)),
+    );
+    assert_eq!(ctx.token.balance(&ctx.recipient), balance_before + frozen);
+}
 
-    // No tokens must have moved.
-    assert_eq!(ctx.token.balance(&ctx.recipient), AMOUNT);
-    assert_eq!(ctx.vault.balance_of_stream(&id), 0);
+/// #178 — `withdraw_max` before the cliff has nothing to pay out, is rejected,
+/// and publishes no event (in particular, no misleading `withdraw` event).
+#[test]
+fn test_withdraw_max_before_cliff_publishes_no_event() {
+    let ctx = setup();
+    // Cliff well after start so streaming has begun but the cliff has not hit.
+    let id = ctx.stream.create_stream(
+        &ctx.sender,
+        &ctx.recipient,
+        &ctx.token_address,
+        &AMOUNT,
+        &START,
+        &END,
+        &(START + 400),
+        &true,
+    );
+    set_ledger(&ctx, START + 200);
     assert_eq!(ctx.stream.withdrawable_amount(&id), 0);
+
+    let events_before = contract_events(&ctx.env, &ctx.stream.address);
+    let balance_before = ctx.token.balance(&ctx.recipient);
+
+    assert_eq!(
+        ctx.stream.try_withdraw_max(&ctx.recipient, &id),
+        Err(Ok(crate::error::StreamError::ExceedsWithdrawable)),
+    );
+
+    assert_eq!(ctx.token.balance(&ctx.recipient), balance_before);
+    assert_eq!(
+        contract_events(&ctx.env, &ctx.stream.address),
+        events_before,
+        "a withdraw_max that pays nothing must not publish any event",
+    );
+}
+
+/// #178 — the contrasting case: a `withdraw_max` that pays a positive amount
+/// publishes exactly one `Withdraw` event carrying that amount.
+#[test]
+fn test_withdraw_max_with_positive_amount_publishes_exactly_one_event() {
+    use crate::events;
+    use soroban_sdk::Event as _;
+
+    let ctx = setup();
+    let id = create_default_stream(&ctx, true);
+    let midpoint = START + (END - START) / 2;
+    set_ledger(&ctx, midpoint);
+
+    let payable = ctx.stream.withdrawable_amount(&id);
+    assert!(payable > 0);
+    let events_before = contract_events(&ctx.env, &ctx.stream.address).len();
+
+    ctx.stream.withdraw_max(&ctx.recipient, &id);
+
+    let stream_events = contract_events(&ctx.env, &ctx.stream.address);
+    assert_eq!(
+        stream_events.len(),
+        events_before + 1,
+        "withdraw_max with a positive amount must publish exactly one event",
+    );
+    assert_eq!(
+        stream_events[events_before],
+        events::Withdraw {
+            stream_id: id,
+            recipient: ctx.recipient.clone(),
+            amount: payable,
+        }
+        .to_xdr(&ctx.env, &ctx.stream.address),
+    );
 }
